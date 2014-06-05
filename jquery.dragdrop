@@ -1,0 +1,146 @@
+(function ($) {
+	function DragDrop() {
+		this.opts = {
+			eventsuffix : '.dragdrop',
+			anchor : '',
+			bound : 'window',
+			dragstart : $.noop,
+			dragend : $.noop,
+			dragmove : $.noop
+		};
+	};
+
+	function getPosition(evt) {
+		var posX = 0;
+		var posY = 0;
+		if (evt.pageX || evt.pageY) {
+			posX = evt.pageX;
+			posY = evt.pageY;
+		} else if (evt.clientX || evt.clientY) {
+			posX = evt.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+			posY = evt.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+		}
+		return {
+			x : posX,
+			y : posY
+		};
+	};
+
+	function stopEvent(evt) {
+		if (evt.preventDefault) {
+			evt.preventDefault();
+		}
+		if (evt.stopPropagation) {
+			evt.stopPropagation();
+		}
+		evt.returnValue = false;
+		return false;
+	};
+
+	DragDrop.prototype = {
+		constructor : DragDrop,
+		init : function (domElem, opts) {
+			var me = this;
+			$.extend(me.opts, opts);
+			me.$select = $(domElem);
+			if (me.opts.anchor) {
+				me.$anchor = me.$select.find(me.opts.anchor);
+				if (!me.$anchor.length) {
+					me.$anchor = $(me.opts.anchor);
+				}
+			}
+			if (!me.$anchor || !me.$anchor.length) {
+				me.$anchor = me.$select;
+			}
+			me.$anchor.on('mousedown' + me.opts.eventsuffix, function (e) {
+				stopEvent(e);
+				if (me.$select.is('.dragging')) {
+					return false;
+				}
+				me.$select.addClass('dragging');
+				me.setMouseOffset(getPosition(e));
+				me.opts.dragstart.call(me.$select, e);
+				$(document).on('mousemove' + me.opts.eventsuffix, function (evt) {
+					stopEvent(evt);
+					me.moveTo(getPosition(evt));
+				}).on('mouseup' + me.opts.eventsuffix, function (evt) {
+					stopEvent(evt);
+					me.$select.removeClass('dragging');
+					$(document).off(me.opts.eventsuffix);
+					me.opts.dragend.call(me.$select, evt);
+				});
+			});
+			return this;
+		},
+		setMouseOffset : function (pos) {
+			var offset = this.$select.offset();
+			this.mouseOffset = {
+				top : pos.y - offset.top,
+				left : pos.x - offset.left
+			};
+		},
+		moveTo : function (dest) {
+			var me = this,
+			newoffset = {},
+			bound = me.getBound();
+			if (dest.y > bound.y.max) {
+				dest.y = bound.y.max - 1;
+			}
+			if (dest.y < bound.y.min) {
+				dest.y = bound.y.min + 1;
+			}
+			if (dest.x > bound.x.max) {
+				dest.x = bound.x.max - 1;
+			}
+			if (dest.x < bound.x.min) {
+				dest.x = bound.x.min + 1;
+			}
+
+			newoffset.top = dest.y - me.mouseOffset.top;
+			newoffset.left = dest.x - me.mouseOffset.left;
+
+				setTimeout(function () {
+					me.$select.offset(newoffset);
+					me.opts.dragmove.call(me.$select, newoffset);
+				}, 10);
+		},
+		getBound : function () {
+			var bound = this.opts.bound;
+			if (typeof bound === 'string') {
+				var $bound = $(bound === 'window' ? window : bound),
+				boundOffset = $bound.offset(),
+				left = boundOffset ? boundOffset.left : 0,
+				top = boundOffset ? boundOffset.top : 0;
+				bound = {
+					x : {
+						min : left,
+						max : left + $bound.width()
+					},
+					y : {
+						min : top,
+						max : top + $bound.height
+					}
+				};
+			}
+			return bound;
+		},
+		destroy : function () {
+			var me = this;
+			me.$anchor.off(me.opts.eventsuffix);
+			$(document).off(me.opts.eventsuffix);
+			me.$select.removeData('dragdrop');
+		}
+	};
+	$.fn.dragdrop = function () {
+		var select = this,
+		args = arguments;
+		if (args.length === 0 || select.data('dragdrop')) {
+			return select.data('dragdrop');
+		} else if (args.length === 1) {
+			return select.each(function () {
+				$.data(this, 'dragdrop', new DragDrop().init(this, args[0]));
+			});
+		}
+	};
+
+})(jQuery);
