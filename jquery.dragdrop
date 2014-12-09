@@ -99,10 +99,13 @@
 			newoffset.top = dest.y - me.mouseOffset.top;
 			newoffset.left = dest.x - me.mouseOffset.left;
 
-				setTimeout(function () {
-					me.$select.offset(newoffset);
-					me.opts.dragmove.call(me.$select, newoffset);
-				}, 10);
+			setTimeout(function () {
+				me.$select.offset(newoffset).css({
+			          'right' : 'initial',
+			          'bottom' : 'initial'
+			        });
+				me.opts.dragmove.call(me.$select, newoffset);
+			}, 10);
 		},
 		getBound : function () {
 			var bound = this.opts.bound;
