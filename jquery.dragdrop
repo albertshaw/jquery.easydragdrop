@@ -121,7 +121,7 @@
 					},
 					y : {
 						min : top,
-						max : top + $bound.height
+						max : top + $bound.height()
 					}
 				};
 			}
